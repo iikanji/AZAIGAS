@@ -1,0 +1,382 @@
+/* menu.css */
+
+:root {
+  --bg: #de8f5f;
+  --box-bg: #FF9F45;
+  --box-text: #293462;
+  --input-bg: #FCFFE0;
+  --input-border: #453F78;
+  --btn-bg: #FFCF50;
+  --btn-hover: #FFDE4D;
+  --btn-text: #606C5D;
+  --placeholder: #B70404;
+  /* Select dropdown defaults */
+  --select-bg: #FCFFE0;
+  --select-text: #293462;
+  --select-border: #453F78;
+  --select-focus: #FF9F45;
+  --select-bg-focus: #fffbe7;
+  --select-text-focus: #293462;
+  --select-arrow: #606C5D;
+}
+
+/* Sunrise */
+.menu-sunrise {
+  --bg: #ffe5b4;
+  --box-bg: #fffbe7;
+  --box-text: #a86b32;
+  --input-bg: #fffbe7;
+  --input-border: #ffcc80;
+  --btn-bg: #ffb347;
+  --btn-hover: #ffcc80;
+  --btn-text: #a86b32;
+  --placeholder: #b70404;
+  /* Select dropdown for sunrise */
+  --select-bg: #fffbe7;
+  --select-text: #a86b32;
+  --select-border: #ffcc80;
+  --select-focus: #ffb347;
+  --select-bg-focus: #fffbe7;
+  --select-text-focus: #a86b32;
+  --select-arrow: #a86b32;
+}
+
+/* Afternoon */
+.menu-afternoon {
+  --bg: #DE8F5F;
+  --box-bg: #FF9F45;
+  --box-text: #293462;
+  --input-bg: #FCFFE0;
+  --input-border: #453F78;
+  --btn-bg: #FFCF50;
+  --btn-hover: #FFDE4D;
+  --btn-text: #606C5D;
+  --placeholder: #B70404;
+  /* Select dropdown for afternoon */
+  --select-bg: #FCFFE0;
+  --select-text: #293462;
+  --select-border: #453F78;
+  --select-focus: #FF9F45;
+  --select-bg-focus: #fffbe7;
+  --select-text-focus: #293462;
+  --select-arrow: #606C5D;
+}
+
+/* Sunset */
+.menu-sunset {
+  --bg: #ffbfae;
+  --box-bg: #ffd1a9;
+  --box-text: #7c3f00;
+  --input-bg: #fffbe7;
+  --input-border: #ffae42;
+  --btn-bg: #ffae42;
+  --btn-hover: #ffd1a9;
+  --btn-text: #7c3f00;
+  --placeholder: #b70404;
+  /* Select dropdown for sunset */
+  --select-bg: #fffbe7;
+  --select-text: #7c3f00;
+  --select-border: #ffae42;
+  --select-focus: #ffae42;
+  --select-bg-focus: #ffd1a9;
+  --select-text-focus: #7c3f00;
+  --select-arrow: #7c3f00;
+}
+
+/* Night */
+.menu-night {
+  --bg: #2d3142;
+  --box-bg: #4f5d75;
+  --box-text: #f9fafc;
+  --input-bg: #22223b;
+  --input-border: #22223b;
+  --btn-bg: #22223b;
+  --btn-hover: #4f5d75;
+  --btn-text: #f9fafc;
+  --placeholder: #e4db85;
+  /* Select dropdown for night */
+  --select-bg: #22223b;
+  --select-text: #f9fafc;
+  --select-border: #4f5d75;
+  --select-focus: #e4db85;
+  --select-bg-focus: #4f5d75;
+  --select-text-focus: #f9fafc;
+  --select-arrow: #e4db85;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  font-family: Arial, sans-serif;
+}
+
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  padding-bottom: 8px;
+}
+
+.box {
+  background: var(--box-bg);
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  padding: 24px;
+  width: 600px;
+  margin-bottom: 20px;
+  color: var(--box-text);
+}
+
+h1, h2 { text-align: center; }
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 14px;
+  background-color: var(--input-bg);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--placeholder);
+}
+
+.form-group select {
+  background: var(--select-bg, var(--input-bg));
+  color: var(--select-text, var(--box-text));
+  border: 1px solid var(--select-border, var(--input-border));
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border 0.2s, background 0.2s, color 0.2s;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: var(--select-focus, #4285f4);
+  background-color: var(--select-bg-focus, #fffbe7);
+  color: var(--select-text-focus, var(--box-text));
+}
+
+.btn {
+  margin-top: 10px;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  font-size: 16px;
+  cursor: pointer;
+  width: 150px;
+}
+
+.btn:hover { background: var(--btn-hover); }
+
+/* Overlay and Quiz Styles */
+.loading-overlay, #quizOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  overflow-y: auto;
+}
+
+#quizOverlay .flag, .loading-overlay .flag {
+  width: 300px !important;
+  height: 200px !important;
+  margin-bottom: 24px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.rays-container {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+}
+
+.ray {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 50px;
+  height: 180px;
+  transform-origin: bottom center;
+  transform: translate(-50%, -100%) rotate(var(--angle));
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  opacity: 1;
+  animation: pulse 13s infinite;
+}
+
+@keyframes pulse {
+  0%, 7.69% { opacity: 1; }
+  3.85% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+.rays-container .ray:nth-child(1) { animation-delay: 0s; }
+.rays-container .ray:nth-child(2) { animation-delay: 1s; }
+.rays-container .ray:nth-child(3) { animation-delay: 2s; }
+.rays-container .ray:nth-child(4) { animation-delay: 3s; }
+.rays-container .ray:nth-child(5) { animation-delay: 4s; }
+.rays-container .ray:nth-child(6) { animation-delay: 5s; }
+.rays-container .ray:nth-child(7) { animation-delay: 6s; }
+.rays-container .ray:nth-child(8) { animation-delay: 7s; }
+.rays-container .ray:nth-child(9) { animation-delay: 8s; }
+.rays-container .ray:nth-child(10) { animation-delay: 9s; }
+.rays-container .ray:nth-child(11) { animation-delay: 10s; }
+.rays-container .ray:nth-child(12) { animation-delay: 11s; }
+.rays-container .ray:nth-child(13) { animation-delay: 12s; }
+
+.blue-part {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100px;
+  background-color: #002147;
+  z-index: 2;
+}
+
+.star {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  background-color: #b87333;
+  clip-path: polygon(
+    50% 0%, 61% 35%, 98% 35%, 68% 57%, 
+    79% 91%, 50% 70%, 21% 91%, 32% 57%, 
+    2% 35%, 39% 35%
+  );
+  z-index: 3;
+}
+
+#mainContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;   /* Horizontally center children */
+  justify-content: center; /* Vertically center if you want */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#quizContainer {
+  margin: 24px auto 0 auto; /* Top margin, auto left/right */
+  width: 100%;
+  max-width: 600px;         /* Or your preferred max width */
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  padding: 1.5rem 2rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;      /* Center content inside */
+}
+
+.cactus-tally {
+  font-size: 2rem;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.flag {
+  width: 300px;
+  height: 200px;
+  position: relative;
+  margin: 0 auto 20px;
+  border: 1px solid #ccc;
+  overflow: hidden;
+}
+
+.head-shake {
+  animation: head-shake 0.3s ease-in-out;
+}
+@keyframes head-shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(10px); }
+  50% { transform: translateX(-10px); }
+  75% { transform: translateX(5px); }
+  100% { transform: translateX(0); }
+}
+
+#dropdownsContainer .dropdown-heading {
+  margin-bottom: 8px !important;
+}
+#dropdownsContainer .form-group {
+  margin-bottom: 8px !important;
+}
+
+/* Paragraph Partial Customization */
+#formBox {
+  background: var(--paragraph-bg, #fffbe7);
+  color: var(--paragraph-text, #293462);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 20px 24px 16px 24px;
+  margin-bottom: 8px;
+  width: 100%;
+  max-width: 650px;
+}
+
+#formBox label {
+  color: var(--paragraph-label, #293462);
+  font-size: 1.08em;
+}
+
+#paragraphField {
+  background: var(--paragraph-input-bg, #FCFFE0);
+  color: var(--paragraph-input-text, #293462);
+  border: 1px solid var(--paragraph-input-border, #453F78);
+  border-radius: 8px;
+  font-size: 1.08em;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  min-height: 120px;
+  resize: vertical;
+}
+
+#paragraphSubmitBtn {
+  background: var(--paragraph-btn-bg, #FFCF50);
+  color: var(--paragraph-btn-text, #606C5D);
+  border: none;
+  border-radius: 8px;
+  font-size: 1.08em;
+  padding: 10px 24px;
+  margin-top: 8px;
+  margin-bottom: 0;
+  width: 180px;
+  align-self: flex-end;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+}
+#paragraphSubmitBtn:hover {
+  background: var(--paragraph-btn-hover, #FFDE4D);
+}

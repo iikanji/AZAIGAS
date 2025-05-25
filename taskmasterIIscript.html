@@ -1,0 +1,223 @@
+// Chat interface functions
+window.initializeChat = function(chatContext) {
+  console.log('chatContext received in chat script:', JSON.stringify(chatContext, null, 2));
+  console.log('Initializing chat with context:', chatContext);
+  window.context = chatContext;
+
+  // Disable input and send button until first assistant message
+  const input = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-button');
+  if (input) input.disabled = true;
+  if (sendBtn) sendBtn.disabled = true;
+
+  // Focus the input when chat loads
+  if (input) input.focus();
+
+  // Compose the initial JSON payload from context, mapping to backend keys
+  const payload = {
+    grade: chatContext.Grade || chatContext.grade || '',
+    subject: chatContext.Subject || chatContext.subject || '',
+    lessonUnit: chatContext['Lesson/Unit'] || chatContext.lessonUnit || '',
+    section: chatContext.Section || chatContext.section || '',
+    taskOption: chatContext['Task/Option'] || chatContext.taskOption || ''
+  };
+  console.log('Initial payload to send:', payload);
+
+  // Send the initial payload as the first message (do not show in chat)
+  window.sendMessageWithPayload(payload, { showInChat: false });
+};
+
+window.sendMessage = function() {
+  const input = document.getElementById('user-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  // Add user message to chat
+  addMessage('user', message);
+  input.value = '';
+
+  // Show typing indicator
+  const typingIndicator = document.getElementById('typing-indicator');
+  typingIndicator.style.display = 'block';
+
+  // Send message to server
+  console.log('Calling handleChatFeedback', {
+    message: message,
+    threadId: window.threadId,
+    assistantId: window.context.assistantId,
+    projectId: window.context.projectId
+  });
+  google.script.run
+    .withSuccessHandler(function(response) {
+      // Hide typing indicator
+      typingIndicator.style.display = 'none';
+      // Add assistant's response
+      addMessage('assistant', response.response);
+      // Store thread ID for future messages
+      window.threadId = response.threadId;
+    })
+    .withFailureHandler(function(error) {
+      // Hide typing indicator
+      typingIndicator.style.display = 'none';
+      // Show error message
+      const errorDiv = document.getElementById('error-message');
+      errorDiv.textContent = error.toString();
+      errorDiv.style.display = 'block';
+    })
+    .sendToAssistant(message, window.threadId, window.context.assistantId, window.context.projectId);
+};
+
+// Helper to send a message with a specific payload (bypassing the input box)
+window.sendMessageWithPayload = function(payload, opts = { showInChat: true }) {
+  // Only send the five lookup fields to backend
+  const minimalPayload = {
+    grade: payload.grade || '',
+    subject: payload.subject || '',
+    lessonUnit: payload.lessonUnit || '',
+    section: payload.section || '',
+    taskOption: payload.taskOption || ''
+  };
+  const message = JSON.stringify(minimalPayload, null, 2);
+  console.log('Sending payload to backend:', message);
+  // Only add user message to chat if this is a real user message
+  if (opts.showInChat) {
+    addMessage('user', message);
+  }
+
+  // Show typing indicator
+  const typingIndicator = document.getElementById('typing-indicator');
+  typingIndicator.style.display = 'block';
+
+  // Send message to server
+  console.log('Calling handleChatFeedback', {
+    message: message,
+    threadId: window.threadId,
+    assistantId: window.context.assistantId,
+    projectId: window.context.projectId
+  });
+  google.script.run
+    .withSuccessHandler(function(response) {
+      typingIndicator.style.display = 'none';
+      addMessage('assistant', response.response);
+      window.threadId = response.threadId;
+      // Re-enable input and send button after first assistant message
+      const input = document.getElementById('user-input');
+      const sendBtn = document.getElementById('send-button');
+      if (input) input.disabled = false;
+      if (sendBtn) sendBtn.disabled = false;
+      if (input) input.focus(); // Focus input after assistant response
+    })
+    .withFailureHandler(function(error) {
+      typingIndicator.style.display = 'none';
+      const errorDiv = document.getElementById('error-message');
+      errorDiv.textContent = error.toString();
+      errorDiv.style.display = 'block';
+      // Re-enable input and send button on error
+      const input = document.getElementById('user-input');
+      const sendBtn = document.getElementById('send-button');
+      if (input) input.disabled = false;
+      if (sendBtn) sendBtn.disabled = false;
+    })
+    .sendToAssistant(message, window.threadId, window.context.assistantId, window.context.projectId);
+};
+
+// === Chat log tracking and auto-logging ===
+let chatLog = [];
+let inactivityTimer = null;
+let chatLogged = false;
+
+function resetInactivityTimer() {
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(triggerChatLog, 5 * 60 * 1000); // 5 minutes
+}
+
+function triggerChatLog() {
+  console.log('triggerChatLog called');
+  if (chatLogged) {
+    console.log('Chat already logged, skipping.');
+    return; // Only trigger once
+  }
+  chatLogged = true;
+  console.log('window.context at triggerChatLog:', window.context);
+  if (!window.context || !window.context.email || !window.context.studentId) {
+    console.warn('Missing context, email, or studentId:', window.context);
+    return;
+  }
+  // Compose metadata from context
+  const meta = window.context;
+  // Compose chat log JSON
+  const chatLogJson = chatLog.slice();
+  // Compose assistant name (from context or fallback)
+  const assistantName = meta.assistantName || meta.assistantId || 'Taskmaster II';
+  // Compose grade, subject, lessonUnit, section
+  const grade = meta.Grade || meta.grade || '';
+  const subject = meta.Subject || meta.subject || '';
+  const lessonUnit = meta['Lesson/Unit'] || meta.lessonUnit || '';
+  const section = meta.Section || meta.section || '';
+  console.log('Calling handleChatFeedback with:', {
+    assistantName: assistantName,
+    email: meta.email,
+    studentId: meta.studentId,
+    grade: grade,
+    subject: subject,
+    lessonUnit: lessonUnit,
+    section: section,
+    chatLogJson: chatLogJson
+  });
+  google.script.run
+    .withSuccessHandler(function(){console.log('handleChatFeedback success');})
+    .withFailureHandler(function(e){console.error('handleChatFeedback error', e);})
+    .handleChatFeedback({
+      assistantName,
+      email: meta.email,
+      studentId: meta.studentId,
+      grade,
+      subject,
+      lessonUnit,
+      section,
+      chatLogJson
+    });
+}
+
+// Track user and assistant messages
+function addMessage(role, content) {
+  const chatHistory = document.getElementById('chat-history');
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${role}-message fade-in`;
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'message-content';
+  contentDiv.textContent = content;
+  messageDiv.appendChild(contentDiv);
+  const timeDiv = document.createElement('div');
+  timeDiv.className = 'message-time';
+  timeDiv.textContent = new Date().toLocaleTimeString();
+  messageDiv.appendChild(timeDiv);
+  chatHistory.appendChild(messageDiv);
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+  // === Add to chat log ===
+  chatLog.push({
+    timestamp: new Date().toISOString(),
+    role,
+    message: content
+  });
+  resetInactivityTimer();
+}
+
+// On tab close, trigger chat log
+window.addEventListener('beforeunload', function() {
+  triggerChatLog();
+});
+
+// Initialize when the page loads
+window.addEventListener('DOMContentLoaded', function() {
+  const input = document.getElementById('user-input');
+  if (input) {
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        window.sendMessage();
+      }
+    });
+  }
+  console.log('Chat interface script loaded');
+}); 

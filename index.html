@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic Menu (Single Tab, Progressive Dropdowns)</title>
+  <style>
+    <?!= include('menu.css'); ?>
+  </style></head>
+<body>
+  <div class="app-wrapper">
+    <div class="box">
+      <h1>Arizona AI Menu</h1>
+      <form id="menuForm" autocomplete="off">
+        <div id="formFieldsContainer">
+          <div class="form-group">
+            <label for="emailField">Enter your email address.</label>
+            <input type="email" id="emailField" name="emailField" placeholder="youSAMA@edu-g.gsn.ed.jp" required>
+          </div>
+          <div class="form-group">
+            <label for="studentIdField">Student ID</label>
+            <input type="text" id="studentIdField" name="studentIdField" placeholder="Enter your student ID." required>
+          </div>
+        </div>
+        <div id="dropdownsContainer"></div>
+      </form>
+      <div id="toolContainer"></div>
+      <div class="loading" id="loadingMsg" style="display:none;">Loading data...</div>
+    </div>
+  </div>
+
+  <script>
+    // Mock google.script.run for local testing
+    if (typeof google === 'undefined') {
+      window.google = {
+        script: {
+          run: {
+            withSuccessHandler: function(callback) {
+              this.successCallback = callback;
+              return this;
+            },
+            withFailureHandler: function(callback) {
+              this.failureCallback = callback;
+              return this;
+            },
+            getMenuContents: function() {
+              console.log("Mock getMenuContents called");
+              // Simulate API call
+              setTimeout(() => {
+                const mockData = {
+                  dropDownOptions: [
+                    { DropdownLevel: 1, 'Contents/Label': 'Grade 9', Grade: 'Grade 9' },
+                    { DropdownLevel: 1, 'Contents/Label': 'Grade 10', Grade: 'Grade 10' },
+                    { DropdownLevel: 2, 'Contents/Label': 'Math', Grade: 'Grade 9', Subject: 'Math' },
+                    { DropdownLevel: 2, 'Contents/Label': 'Science', Grade: 'Grade 9', Subject: 'Science' },
+                    { DropdownLevel: 2, 'Contents/Label': 'History', Grade: 'Grade 10', Subject: 'History' },
+                    { DropdownLevel: 3, 'Contents/Label': 'Algebra', Grade: 'Grade 9', Subject: 'Math', 'Lesson/Unit': 'Algebra' },
+                    { DropdownLevel: 3, 'Contents/Label': 'Geometry', Grade: 'Grade 9', Subject: 'Math', 'Lesson/Unit': 'Geometry' },
+                    { DropdownLevel: 3, 'Contents/Label': 'Biology', Grade: 'Grade 9', Subject: 'Science', 'Lesson/Unit': 'Biology', ToolType: 'paragraph', AssistantId: 'asst_XYZ', ProjectId: 'proj_123' },
+                    { DropdownLevel: 3, 'Contents/Label': 'Ancient Civ', Grade: 'Grade 10', Subject: 'History', 'Lesson/Unit': 'Ancient Civ', ToolType: 'chat', AssistantId: 'asst_ABC', ProjectId: 'proj_456' },
+                    { DropdownLevel: 4, 'Contents/Label': 'Chapter 1', Grade: 'Grade 9', Subject: 'Math', 'Lesson/Unit': 'Algebra', Section: 'Chapter 1', ToolType: 'chat', AssistantId: 'asst_QWE', ProjectId: 'proj_789'},
+                    { DropdownLevel: 4, 'Contents/Label': 'Chapter 2', Grade: 'Grade 9', Subject: 'Math', 'Lesson/Unit': 'Algebra', Section: 'Chapter 2', ToolType: 'paragraph', AssistantId: 'asst_RTY', ProjectId: 'proj_012'}
+                  ]
+                };
+                if (this.successCallback) {
+                  this.successCallback(mockData);
+                }
+              }, 500);
+            },
+            include: function(toolName) {
+                console.log(`Mock include called for: ${toolName}`);
+                if (this.successCallback) {
+                    if (toolName === 'paragraph') {
+                        this.successCallback(`
+                            <div class="form-group">
+                                <label for="paragraphField">Enter your paragraph:</label>
+                                <textarea id="paragraphField" rows="5" style="width: calc(100% - 22px); padding: 10px;"></textarea>
+                            </div>
+                            <button id="paragraphSubmitBtn" type="button">Submit Paragraph</button>
+                        `);
+                    } else if (toolName === 'taskmasterIIscript' || toolName === 'VocabQuizScript') {
+                        this.successCallback(''); // no actual script content needed for mock
+                    } else if (toolName === 'VocabularyQuiz' ) {
+                        this.successCallback('<div id="mockQuiz">Mock Quiz Loaded</div>');
+                    } else {
+                         this.successCallback('<div id="mockChatInterface">Mock Chat Interface Loaded. <button id="chatSendBtn">Send</button></div>');
+                    }
+                }
+                return this;
+            },
+            loadChatInterface: function() { // Mock specific GAS function
+                 console.log("Mock loadChatInterface called");
+                 if (this.successCallback) {
+                    this.successCallback('<div id="mockChatInterface">Mock Chat Interface Content. <button id="chatSendBtn">Send</button></div>');
+                 }
+                 return this;
+            },
+            processParagraphWithAssistant: function(email, studentId, assignment, paragraph, assistantId, projectId) {
+                console.log("Mock processParagraphWithAssistant", {email, studentId, assignment, paragraph, assistantId, projectId});
+                if (this.successCallback) {
+                    setTimeout(() => this.successCallback("<p>This is mock feedback for your paragraph.</p>"), 500);
+                }
+            }
+            // Add other mock functions as needed
+          }
+        }
+      };
+      // Mock initializeChat and initializeQuiz for local testing
+      window.initializeChat = function(context) { console.log("Mock initializeChat called with context:", context); };
+      window.initializeQuiz = function(studentId) { console.log("Mock initializeQuiz called with studentId:", studentId); };
+
+    }
+
+
+    // Arizona time theme logic
+    function getJapanHour() {
+      const now = new Date();
+      const utcHour = now.getUTCHours();
+      const japanHour = (utcHour + 9) % 24; // UTC+9 for Tokyo
+      return japanHour;
+    }
+    function setMenuTheme() {
+      const hour = getJapanHour();
+      let theme = 'menu-afternoon';
+      if (hour >= 5 && hour < 7) {
+        theme = 'menu-sunrise';
+      } else if (hour >= 7 && hour < 17) {
+        theme = 'menu-afternoon';
+      } else if (hour >= 17 && hour < 19) {
+        theme = 'menu-sunset';
+      } else {
+        theme = 'menu-night';
+      }
+      document.body.classList.remove('menu-sunrise', 'menu-afternoon', 'menu-sunset', 'menu-night');
+      document.body.classList.add(theme);
+    }
+    setMenuTheme();
+
+    // Dropdown logic
+    let menuData = [];
+    let maxLevel = 1;
+    const loadingMsg = document.getElementById('loadingMsg');
+    const dropdownsContainer = document.getElementById('dropdownsContainer');
+
+    function fetchMenuData() {
+      loadingMsg.style.display = 'block';
+      google.script.run.withSuccessHandler(function(data) {
+        menuData = data.dropDownOptions || [];
+        maxLevel = menuData.length > 0 ? Math.max(...menuData.map(row => Number(row.DropdownLevel) || 1)) : 1;
+        renderDropdowns();
+        loadingMsg.style.display = 'none';
+      }).withFailureHandler(function(err) {
+        loadingMsg.textContent = 'Failed to load data! Error: ' + JSON.stringify(err);
+        loadingMsg.style.color = 'red';
+      }).getMenuContents();
+    }
+
+    function renderDropdowns() {
+      dropdownsContainer.innerHTML = ''; // Clear previous dropdowns before rendering new ones
+      createDropdown(1, {});
+    }
+
+    function createDropdown(level, selections) {
+      let options = menuData.filter(row => Number(row.DropdownLevel) === level);
+      if (level > 1) {
+        if (selections.Grade) options = options.filter(row => !row.Grade || row.Grade === selections.Grade);
+        if (selections.Subject) options = options.filter(row => !row.Subject || row.Subject === selections.Subject);
+        if (selections['Lesson/Unit']) options = options.filter(row => !row['Lesson/Unit'] || row['Lesson/Unit'] === selections['Lesson/Unit']);
+        if (selections.Section) options = options.filter(row => !row.Section || row.Section === selections.Section);
+        // Task/Option is typically the last, so it doesn't filter further dropdowns but is part of selections
+      }
+
+      const uniqueLabels = [...new Set(options.map(row => row['Contents/Label']).filter(Boolean))];
+      if (uniqueLabels.length === 0 && level <= maxLevel) { // Only return if no options AND not beyond max configured level
+          // If we expect more levels based on maxLevel but find no options, it might be a data issue or end of a specific path.
+          // console.log(`No unique labels for level ${level} with selections:`, selections);
+          return;
+      }
+
+
+      const headings = [
+        'Select your grade.',
+        'Select the subject.',
+        'Select the chapter/unit/lesson.',
+        'Select the section.',
+        'Select the task/option.' // Added heading for level 5
+      ];
+      if (level <= headings.length) {
+        const heading = document.createElement('div');
+        heading.className = 'dropdown-heading';
+        heading.textContent = headings[level - 1];
+        heading.style.marginBottom = '8px';
+        dropdownsContainer.appendChild(heading);
+      }
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'form-group';
+      const select = document.createElement('select');
+      select.id = `dropdownLevel${level}`;
+      select.innerHTML = `<option value="">-- Select --</option>` +
+        uniqueLabels.map(label => `<option value="${label}">${label}</option>`).join('');
+      select.style.display = 'block';
+      // Removed redundant paddingLeft/Right as it's handled by .form-group select in CSS
+
+      select.addEventListener('change', function() {
+        const currentSelections = { ...selections }; // Use a new object for selections for this path
+
+        // **KEY CHANGE**: Remove deeper dropdowns and their headings
+        // Each dropdown consists of a heading (div.dropdown-heading) and a select wrapper (div.form-group)
+        // So, for level `l`, its elements are at indices (l-1)*2 and (l-1)*2 + 1
+        // We want to remove all children from index `level * 2` onwards.
+        while (dropdownsContainer.children.length > level * 2) {
+          dropdownsContainer.removeChild(dropdownsContainer.lastChild);
+        }
+        // Clear the tool container whenever any dropdown changes
+        document.getElementById('toolContainer').innerHTML = '';
+
+
+        // Update currentSelections with the value from THIS dropdown
+        const selectedValue = select.value;
+        if (level === 1) currentSelections.Grade = selectedValue;
+        else if (level === 2) currentSelections.Subject = selectedValue;
+        else if (level === 3) currentSelections['Lesson/Unit'] = selectedValue;
+        else if (level === 4) currentSelections.Section = selectedValue;
+        else if (level === 5) currentSelections['Task/Option'] = selectedValue;
+
+
+        if (!selectedValue) { // If "-- Select --" is chosen, do nothing further
+          return;
+        }
+
+        const nextLevel = level + 1;
+        // Check if there are any options for the next level based on current selections
+        let deeperOptions = menuData.filter(row => Number(row.DropdownLevel) === nextLevel);
+        if (currentSelections.Grade) deeperOptions = deeperOptions.filter(row => !row.Grade || row.Grade === currentSelections.Grade);
+        if (currentSelections.Subject) deeperOptions = deeperOptions.filter(row => !row.Subject || row.Subject === currentSelections.Subject);
+        if (currentSelections['Lesson/Unit']) deeperOptions = deeperOptions.filter(row => !row['Lesson/Unit'] || row['Lesson/Unit'] === currentSelections['Lesson/Unit']);
+        if (currentSelections.Section) deeperOptions = deeperOptions.filter(row => !row.Section || row.Section === currentSelections.Section);
+        // Task/Option is usually the deepest selection for filtering data for the tool, not for creating more dropdowns.
+
+        if (deeperOptions.length > 0 && [...new Set(deeperOptions.map(r => r['Contents/Label']))].filter(Boolean).length > 0) {
+          createDropdown(nextLevel, currentSelections);
+        } else {
+          // This is a leaf node for the current selection path, try to load a tool
+          const leafRow = menuData.find(row => {
+            const levelMatch = Number(row.DropdownLevel) === level;
+            const labelMatch = row['Contents/Label'] === selectedValue;
+            // Ensure all selections made so far match the row's defined path
+            const gradeMatch = !row.Grade || row.Grade === currentSelections.Grade;
+            const subjectMatch = !row.Subject || row.Subject === currentSelections.Subject;
+            const lessonUnitMatch = !row['Lesson/Unit'] || row['Lesson/Unit'] === currentSelections['Lesson/Unit'];
+            const sectionMatch = !row.Section || row.Section === currentSelections.Section;
+            // Task/Option might not exist for all tools, or might be the current level's label
+            const taskOptionMatch = (level < 5) ? (!row['Task/Option']) : (!row['Task/Option'] || row['Task/Option'] === currentSelections['Task/Option']);
+
+
+            return levelMatch && labelMatch && gradeMatch && subjectMatch && lessonUnitMatch && sectionMatch && taskOptionMatch && row.ToolType;
+          });
+
+          if (leafRow && leafRow.ToolType) {
+            const email = document.getElementById('emailField').value;
+            const studentId = document.getElementById('studentIdField').value;
+            let assignment = '';
+            if (currentSelections.Grade) assignment += currentSelections.Grade + ': ';
+            if (currentSelections.Subject) assignment += currentSelections.Subject + ': ';
+            if (currentSelections['Lesson/Unit']) assignment += currentSelections['Lesson/Unit'] + ': ';
+            if (currentSelections.Section) assignment += currentSelections.Section + ': ';
+            if (currentSelections['Task/Option']) assignment += currentSelections['Task/Option'];
+            assignment = assignment.replace(/: $/,'').trim();
+
+            const toolContext = {
+                email,
+                studentId,
+                assignment,
+                assistantId: leafRow.AssistantId,
+                projectId: leafRow.ProjectId,
+                Grade: currentSelections.Grade,
+                Subject: currentSelections.Subject,
+                'Lesson/Unit': currentSelections['Lesson/Unit'],
+                Section: currentSelections.Section,
+                'Task/Option': currentSelections['Task/Option'] || ''
+            };
+
+            if (leafRow.ToolType === 'paragraph') {
+              loadParagraphTool(toolContext);
+            } else if (leafRow.ToolType === 'chat') {
+                // Basic validation for chat tool context
+                if (currentSelections.Grade && currentSelections.Subject && currentSelections['Lesson/Unit'] /*&& currentSelections.Section is not strictly required by all chat tools */) {
+                    loadChatTool(toolContext);
+                } else {
+                    alert('Please ensure all preceding menu selections are made to activate the chat tool.');
+                    console.warn("Chat tool not loaded due to incomplete selections:", currentSelections);
+                }
+            }
+            // (future: handle other ToolTypes like 'url', etc.)
+          } else {
+            // console.log("No tool found for selection:", selectedValue, "at level", level, "with context", currentSelections);
+          }
+        }
+      });
+      wrapper.appendChild(select);
+      dropdownsContainer.appendChild(wrapper);
+    }
+
+    function loadParagraphTool(context) {
+      // Disable beforeunload warning for Paragraph interface
+      window.onbeforeunload = null;
+      google.script.run.withSuccessHandler(function(html) {
+        document.getElementById('toolContainer').innerHTML = html;
+        const submitBtn = document.getElementById('paragraphSubmitBtn');
+        if (submitBtn) {
+          submitBtn.onclick = function() {
+            const paragraph = document.getElementById('paragraphField').value;
+            if (!context.email || !context.studentId) {
+                alert("Please enter your email and student ID.");
+                return;
+            }
+            if (!paragraph.trim()) {
+                alert("Please enter some text in the paragraph field.");
+                return;
+            }
+            showQuizOverlay(context.Grade); // Pass grade, not studentId
+            let feedbackTriggered = false;
+            // Call backend to get feedbackContent first
+            google.script.run.withSuccessHandler(function(feedbackContent) {
+              console.log('Feedback content:', feedbackContent);
+              // Remove the quiz overlay if it exists
+              const quizOverlay = document.getElementById('quizOverlay');
+              if (quizOverlay) quizOverlay.remove();
+              // Display feedback to user
+              document.getElementById('toolContainer').innerHTML = '<div class="feedback-box">' + feedbackContent + '</div>';
+              // Prepare payload for logging/emailing
+              const payload = {
+                assistantName: context.assistantName || context.assistantId || 'ParagraphPeccary',
+                email: context.email,
+                studentId: context.studentId,
+                grade: context.Grade || context.grade || '',
+                subject: context.Subject || context.subject || '',
+                lessonUnit: context['Lesson/Unit'] || context.lessonUnit || '',
+                section: context.Section || context.section || '',
+                topic: '', // If you have topic info, add it here
+                studentParagraph: paragraph,
+                feedbackHtml: feedbackContent
+              };
+              console.log('Calling handleParagraphFeedback with:', payload);
+              google.script.run.handleParagraphFeedback(payload);
+            }).withFailureHandler(function(err) {
+              document.getElementById('toolContainer').innerHTML += `<div class="error">Error getting feedback: ${JSON.stringify(err)}</div>`;
+            }).processParagraphWithAssistant(
+              context.email,
+              context.studentId,
+              context.assignment,
+              paragraph,
+              context.assistantId,
+              context.projectId
+            );
+          };
+        }
+      }).withFailureHandler(err => {
+          document.getElementById('toolContainer').innerHTML = `<div class="error">Error loading paragraph tool: ${JSON.stringify(err)}</div>`;
+      }).include('paragraph');
+    }
+
+    function showLoadingOverlay() {
+      let overlay = document.getElementById('loadingOverlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'loadingOverlay';
+        overlay.className = 'loading-overlay'; // Ensure this class is styled
+        overlay.innerHTML = '<div class="loading-text">Loading<span class="ellipsis">...</span></div>'; // Basic styling
+        document.body.appendChild(overlay);
+        // Add styles for loading-overlay if not in menu.css
+        const style = document.createElement('style');
+        style.textContent = `
+            .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; color: white; font-size: 1.5em; }
+            .loading-text .ellipsis::after { content: '.'; animation: ellipsis 1s infinite; }
+            @keyframes ellipsis { 0% {content: '.';} 33% {content: '..';} 66% {content: '...';} }
+        `;
+        document.head.appendChild(style);
+      }
+      overlay.style.display = 'flex';
+    }
+    function hideLoadingOverlay() {
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) overlay.style.display = 'none';
+    }
+
+    function showQuizOverlay(grade) {
+      let overlay = document.getElementById('quizOverlay');
+      if (overlay) overlay.remove();
+      overlay = document.createElement('div');
+      overlay.id = 'quizOverlay';
+      overlay.className = 'loading-overlay';
+      // Set the loading message
+      overlay.innerHTML = '<div id="content"><p>SheebahrahkooOmahcheeKoodahsuy...</p></div>';
+      // Apply the same styles as showLoadingOverlay or define specific ones
+      const style = document.createElement('style');
+      style.textContent = `
+          .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; color: black; font-size: 1.2em; flex-direction: column; }
+      `;
+      document.head.appendChild(style);
+
+      google.script.run.withSuccessHandler(function(html) {
+        overlay.innerHTML = html; // This should be the HTML structure for the quiz
+        document.body.appendChild(overlay);
+        overlay.style.display = 'flex';
+        // Inject script for the quiz
+        google.script.run.withSuccessHandler(function(scriptHtml) {
+          const scriptContainer = document.createElement('div');
+          scriptContainer.innerHTML = scriptHtml;
+          Array.from(scriptContainer.querySelectorAll('script')).forEach(oldScript => {
+            const newScript = document.createElement('script');
+            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+            overlay.appendChild(newScript);
+          });
+          overlay.appendChild(scriptContainer);
+          if (typeof initializeQuiz === 'function') {
+            console.log('Calling initializeQuiz with', grade);
+            initializeQuiz(grade); // Pass grade, not studentId
+          } else {
+            console.error('initializeQuiz is not defined after script load. Check VocabQuizScript.');
+          }
+        }).withFailureHandler(err => {
+            console.error('Failed to load VocabQuizScript:', err);
+            overlay.innerHTML = '<p>Error loading quiz script.</p>';
+        }).include('VocabQuizScript');
+      }).withFailureHandler(function(err) {
+        console.error('Failed to load VocabularyQuiz.html:', err);
+        overlay.innerHTML = '<p>Error loading quiz content.</p>';
+        document.body.appendChild(overlay);
+        overlay.style.display = 'flex';
+      }).include('VocabularyQuiz');
+    }
+
+    function loadChatTool(context) {
+      console.log('Loading chat tool for context:', context);
+      const toolContainer = document.getElementById('toolContainer');
+      toolContainer.innerHTML = '<div class="loading">Loading Chat Interface...</div>'; // Initial loading message
+
+      if (!context.email || !context.studentId) {
+          alert("Please enter your email and student ID before starting chat.");
+          toolContainer.innerHTML = '<div class="error">Email and Student ID are required.</div>';
+          return;
+      }
+      
+      google.script.run
+        .withSuccessHandler(function(html) {
+          toolContainer.innerHTML = html; // Load chat HTML structure
+
+          google.script.run
+            .withSuccessHandler(function(scriptContent) {
+              const script = document.createElement('script');
+              script.textContent = scriptContent; // Set script content
+              document.body.appendChild(script); // Append to body to execute
+
+              // Give the script a moment to define initializeChat
+              setTimeout(function() {
+                if (typeof window.initializeChat === 'function') {
+                  window.initializeChat(context); // Pass the full context
+                } else {
+                  toolContainer.innerHTML = '<div class="error">Error: Chat interface failed to load its script properly.</div>';
+                  console.error("window.initializeChat not found after loading taskmasterIIscript");
+                }
+              }, 100); // 100ms delay, adjust if necessary
+            })
+            .withFailureHandler(function(error) {
+              toolContainer.innerHTML = '<div class="error">Error loading chat script: ' + (error.message || JSON.stringify(error)) + '</div>';
+            })
+            .include('taskmasterIIscript'); // This should be the name of your .gs file containing the script, or an HTML file with <script> tags
+        })
+        .withFailureHandler(function(error) {
+          toolContainer.innerHTML = '<div class="error">Error loading chat interface: ' + (error.message || JSON.stringify(error)) + '</div>';
+        })
+        .loadChatInterface(); // Assuming this GAS function returns HTML for the chat interface
+    }
+
+    window.addEventListener('DOMContentLoaded', fetchMenuData);
+
+    window.setMenuTheme = function(theme) {
+      const themes = ['menu-sunrise', 'menu-afternoon', 'menu-sunset', 'menu-night'];
+      document.body.classList.remove(...themes);
+      const appWrapper = document.querySelector('.app-wrapper');
+      if (appWrapper) appWrapper.classList.remove(...themes);
+      if (themes.includes(theme)) {
+        document.body.classList.add(theme);
+        if (appWrapper) appWrapper.classList.add(theme);
+      } else {
+        console.warn('Unknown theme:', theme);
+      }
+    };
+  </script>
+</body>
+</html>

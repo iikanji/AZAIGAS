@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>Student Chat Interface</title>
+  <style>
+    .chat-interface {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    .chat-interface h1 {
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .chat-interface #chat-container {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+      height: 70vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-interface #chat-history {
+      flex-grow: 1;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background-color: #fafafa;
+    }
+    .chat-interface .message {
+      margin-bottom: 15px;
+      padding: 12px 16px;
+      border-radius: 18px;
+      max-width: 80%;
+      line-height: 1.5;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    .chat-interface .user-message {
+      background-color: #e3f2fd;
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+    }
+    .chat-interface .ai-message {
+      background-color: #f1f1f1;
+      margin-right: auto;
+      border-bottom-left-radius: 4px;
+    }
+    .chat-interface #input-area {
+      display: flex;
+      gap: 10px;
+      padding: 10px 0;
+    }
+    .chat-interface #user-input {
+      flex-grow: 1;
+      padding: 12px 15px;
+      border: 1px solid #ddd;
+      border-radius: 24px;
+      font-size: 16px;
+      outline: none;
+      transition: border 0.3s;
+    }
+    .chat-interface #user-input:focus {
+      border-color: #4285f4;
+    }
+    .chat-interface #send-button {
+      padding: 0 24px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 24px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chat-interface #send-button:hover {
+      background-color: #3367d6;
+    }
+    .chat-interface #send-button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .chat-interface .typing-indicator {
+      display: none;
+      color: #666;
+      font-style: italic;
+      margin: 10px 0;
+      padding-left: 15px;
+    }
+    .chat-interface .error-message {
+      color: #d32f2f;
+      background-color: #ffebee;
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .chat-interface .fade-in {
+      animation: chat-fade-in 0.3s;
+    }
+    @keyframes chat-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .chat-interface .message-time {
+      font-size: 0.75rem;
+      color: #666;
+      margin-top: 4px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-interface">
+    <div id="error-message" class="error-message"></div>
+    
+    <div id="chat-container">
+      <div id="chat-history"></div>
+      <div id="typing-indicator" class="typing-indicator">SheebahrahkooOmahcheeKoodahsuy...</div>
+      <div id="input-area">
+        <input type="text" id="user-input" placeholder="Type your question here..." autocomplete="off">
+        <button id="send-button" onclick="sendMessage()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Chat interface functions
+    function attachEnterListenerToChatInput() {
+      const input = document.getElementById('user-input');
+      if (input) {
+        input.onkeydown = null;
+        input.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+          }
+        });
+      }
+    }
+
+    window.initializeChat = function(chatContext) {
+      console.log('initializeChat called with context:', chatContext);
+      window.context = chatContext;
+      // Add initial message from assistant
+      addMessage('assistant', 'こんにちは！AEE TaskMaster IIです。まずは Grade, Part, Lesson, Section, Task の ID を JSON 形式で教えてください。');
+      // Attach Enter key event listener to input
+      attachEnterListenerToChatInput();
+    };
+
+    window.sendMessage = function() {
+      console.log('sendMessage called');
+      const input = document.getElementById('user-input');
+      const message = input.value.trim();
+      if (!message) return;
+
+      // Add user message to chat
+      addMessage('user', message);
+      input.value = '';
+
+      // Show typing indicator
+      const typingIndicator = document.getElementById('typing-indicator');
+      typingIndicator.style.display = 'block';
+
+      // Send message to server
+      google.script.run
+        .withSuccessHandler(function(response) {
+          // Hide typing indicator
+          typingIndicator.style.display = 'none';
+          // Add assistant's response
+          addMessage('assistant', response.response);
+          // Store thread ID for future messages
+          window.threadId = response.threadId;
+        })
+        .withFailureHandler(function(error) {
+          // Hide typing indicator
+          typingIndicator.style.display = 'none';
+          // Show error message
+          const errorDiv = document.getElementById('error-message');
+          errorDiv.textContent = error.toString();
+          errorDiv.style.display = 'block';
+        })
+        .sendToAssistant(message, window.threadId);
+    };
+
+    function addMessage(role, content) {
+      console.log('addMessage called:', role, content);
+      const chatHistory = document.getElementById('chat-history');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${role}-message fade-in`;
+      
+      // Add message content
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content';
+      contentDiv.textContent = content;
+      messageDiv.appendChild(contentDiv);
+      
+      // Add timestamp
+      const timeDiv = document.createElement('div');
+      timeDiv.className = 'message-time';
+      timeDiv.textContent = new Date().toLocaleTimeString();
+      messageDiv.appendChild(timeDiv);
+      
+      chatHistory.appendChild(messageDiv);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    // Initialize when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOMContentLoaded event fired');
+      const input = document.getElementById('user-input');
+      if (input) {
+        input.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+          }
+        });
+      }
+      console.log('Chat interface script loaded and initialized');
+    });
+
+    console.log('Chat interface script loaded');
+  </script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<script>
+console.log('VocabQuizScript loaded');
+window.quizData = window.quizData || [];
+window.currentQuestion = window.currentQuestion || 0;
+window.cactusCount = window.cactusCount || 0;
+
+function initializeQuiz(studentId) {
+  console.log('initializeQuiz called with', studentId);
+  if (!studentId) {
+    showError({ message: "Please enter a valid Student ID before submitting." });
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(data => {
+      quizData = data;
+      if (quizData.length === 0) return showError({ message: 'No questions found' });
+      showQuestion();
+    })
+    .withFailureHandler(showError)
+    .getQuizData(studentId);
+}
+
+function showQuestion() {
+  const q = quizData[currentQuestion];
+  const answers = Array.isArray(q.answers) ? q.answers : [];
+  let answerIndex = 0;
+  const problemHTML = q.problem.replace(/\[(blank(?:et)?)\]/gi, (match, tokenType) => {
+    let placeholder = "";
+    if (tokenType.toLowerCase() === "blank") {
+      if (answers[answerIndex]) {
+        placeholder = answers[answerIndex].charAt(0);
+      }
+    }
+    answerIndex++;
+    return `<input class="question-input" placeholder="${placeholder}" autocomplete="off" style="margin:0 4px; padding:6px 8px; font-size:1em;">`;
+  });
+  const quizContainer = document.getElementById('quizContainer');
+  if (!quizContainer) return;
+  quizContainer.innerHTML = `
+    <form id="quizForm" onsubmit="handleAnswer(event)" style="margin:0 auto; max-width:500px; padding:16px 0;">
+      <h3 style="margin-top:0; margin-bottom:12px;">${q.hint || ''}</h3>
+      <div style="margin-bottom:18px; font-size:1.1em;">${problemHTML}</div>
+      <button type="submit" style="display:none"></button>
+    </form>
+  `;
+  document.querySelector('.question-input')?.focus();
+}
+
+function handleAnswer(event) {
+  event.preventDefault();
+  const quizContainer = document.getElementById('quizContainer');
+  const inputs = Array.from(document.querySelectorAll('.question-input'));
+  const userAnswers = inputs.map(i => i.value.trim());
+  const correctAnswers = quizData[currentQuestion].answers.map(a => a.trim().toLowerCase());
+  let allCorrect = true;
+  inputs.forEach((input, index) => {
+    const isCorrect = userAnswers[index].toLowerCase().trim() === correctAnswers[index];
+    if (!isCorrect) allCorrect = false;
+    input.style.borderColor = isCorrect ? '#4CAF50' : '#ff4444';
+    input.style.backgroundColor = isCorrect ? '#f8fff8' : '#fff8f8';
+  });
+  if (allCorrect) {
+    cactusCount++;
+    document.getElementById('cactusTally').textContent = '🌵'.repeat(cactusCount);
+    currentQuestion++;
+    setTimeout(() => {
+      if(currentQuestion < quizData.length) {
+        showQuestion();
+      } else {
+        endQuiz();
+      }
+    }, 500);
+  } else {
+    if (quizContainer) {
+      quizContainer.classList.remove('head-shake');
+      void quizContainer.offsetWidth;
+      quizContainer.classList.add('head-shake');
+    }
+  }
+}
+function endQuiz() {
+  const quizContainer = document.getElementById('quizContainer');
+  if (!quizContainer) return;
+  quizContainer.innerHTML = `
+    <div style="text-align:center; padding:2rem 0;">
+      <h3>Complete! 🎉</h3>
+      <p>Earned ${cactusCount} 🌵</p>
+      <button onclick="location.reload()" style="margin-top:1rem; padding:10px 24px; font-size:1.1em; border-radius:8px;">Restart</button>
+    </div>
+  `;
+}
+function showError(error) {
+  const quizContainer = document.getElementById('quizContainer');
+  if (!quizContainer) return;
+  quizContainer.innerHTML = `
+    <div style="color:red; padding:1rem">
+      <h3>⚠️ Error</h3>
+      <p>${error.message}</p>
+      <button onclick="location.reload()">Retry</button>
+    </div>
+  `;
+}
+</script> 
